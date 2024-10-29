@@ -5,25 +5,25 @@ using UnityEngine;
 public class Seeker : MonoBehaviour
 {
     private enum State { Idle, Moving, Turning, Avoiding }
-    private State currentState;
+    private State _currentState;
 
     public Transform target;
-    public float speed = 20f;
+    public float speed = 12f;
     public LayerMask unwalkableLayer;
     public LayerMask otherPathLayer;
     public float nodeRadius = 0.5f;
     public float turningSpeed = 5f;
 
-    private Node currentNode;
-    private Node targetNode;
-    private Grid grid;
+    private Node _currentNode;
+    private Node _targetNode;
+    private Grid _grid;
 
     void Start()
     {
-        currentState = State.Moving;
-        grid = FindObjectOfType<Grid>();
-        currentNode = grid.NodeFromWorldPoint(transform.position);
-        targetNode = grid.NodeFromWorldPoint(target.position);
+        _currentState = State.Moving;
+        _grid = FindObjectOfType<Grid>();
+        _currentNode = _grid.NodeFromWorldPoint(transform.position);
+        _targetNode = _grid.NodeFromWorldPoint(target.position);
         StartCoroutine(StateMachine());
     }
 
@@ -31,7 +31,7 @@ public class Seeker : MonoBehaviour
     {
         while (true)
         {
-            switch (currentState)
+            switch (_currentState)
             {
                 case State.Moving:
                     Move();
@@ -51,15 +51,15 @@ public class Seeker : MonoBehaviour
 
     void Move()
     {
-        if (Vector3.Distance(transform.position, currentNode.worldPosition) < 0.1f)
+        if (Vector3.Distance(transform.position, _currentNode.worldPosition) < 0.1f)
         {
-            if (currentNode == targetNode)
+            if (_currentNode == _targetNode)
             {
-                currentState = State.Idle;
+                _currentState = State.Idle;
                 return;
             }
 
-            List<Node> neighbours = GetNeighbours(currentNode);
+            List<Node> neighbours = GetNeighbours(_currentNode);
             Node bestNode = null;
             float shortestDistance = Mathf.Infinity;
 
@@ -78,54 +78,51 @@ public class Seeker : MonoBehaviour
 
             if (bestNode != null)
             {
-                currentNode = bestNode;
+                _currentNode = bestNode;
             }
             else
             {
-                currentState = State.Turning;
+                _currentState = State.Turning;
                 return;
             }
         }
-
-        // Smoothly rotate towards the target node
-        Vector3 direction = (currentNode.worldPosition - transform.position).normalized;
+        
+        Vector3 direction = (_currentNode.worldPosition - transform.position).normalized;
         Quaternion targetRotation = Quaternion.LookRotation(direction);
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * turningSpeed);
 
-        transform.position = Vector3.MoveTowards(transform.position, currentNode.worldPosition, speed * Time.deltaTime);
-
-        // Check for collision with A* path
+        transform.position = Vector3.MoveTowards(transform.position, _currentNode.worldPosition, speed * Time.deltaTime);
+        
         if (Physics.CheckSphere(transform.position, nodeRadius, otherPathLayer))
         {
-            currentState = State.Avoiding;
+            _currentState = State.Avoiding;
         }
     }
 
     void Turn()
     {
-        List<Node> neighbours = GetNeighbours(currentNode);
+        List<Node> neighbours = GetNeighbours(_currentNode);
         foreach (Node neighbour in neighbours)
         {
             if (neighbour.walkable)
             {
-                currentNode = neighbour;
-                currentState = State.Moving;
+                _currentNode = neighbour;
+                _currentState = State.Moving;
                 return;
             }
         }
 
-        // Randomly turn if blocked
         transform.Rotate(Vector3.up, Random.Range(45, 135));
     }
 
     void Avoid()
     {
         transform.Rotate(Vector3.up, 180);
-        currentState = State.Moving;
+        _currentState = State.Moving;
     }
 
     List<Node> GetNeighbours(Node node)
     {
-        return grid.GetNeighbours(node);
+        return _grid.GetNeighbours(node);
     }
 }
