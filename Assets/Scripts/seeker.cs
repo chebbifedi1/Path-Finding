@@ -4,7 +4,7 @@ using UnityEngine;
 
 public class Seeker : MonoBehaviour
 {
-    private enum State { Idle, Moving, Turning, Avoiding }
+    private enum State { Idle, Moving, Accelerate, Turning, Avoiding }
     private State _currentState;
 
     public Transform target;
@@ -17,6 +17,9 @@ public class Seeker : MonoBehaviour
     private Node _currentNode;
     private Node _targetNode;
     private Grid _grid;
+
+    public float rayDistance = 10f;
+    private string hitname;
 
     void Start()
     {
@@ -31,12 +34,29 @@ public class Seeker : MonoBehaviour
     {
         while (true)
         {
+            Debug.DrawRay(transform.position + new Vector3(2,0.7f,0), transform.forward * rayDistance, Color.red);
+
+            // Perform the raycast
+            Ray ray = new Ray(transform.position + new Vector3(2, 0.7f, 0), transform.forward);
+            RaycastHit hit;
+
+            if (Physics.Raycast(ray, out hit, rayDistance))
+            {
+                // Log the name of the object the ray hits
+                //Debug.Log(hit.collider.gameObject.name);
+                hitname = hit.collider.gameObject.name;
+            }
+
             switch (_currentState)
             {
                 case State.Moving:
+                    speed = 12f;
                     Move();
                     break;
-
+                case State.Accelerate:
+                    speed = 15f;
+                    Move();
+                    break;
                 case State.Turning:
                     Turn();
                     break;
@@ -86,7 +106,16 @@ public class Seeker : MonoBehaviour
                 return;
             }
         }
-        
+
+        if (!(hitname == "Seeker"))
+        {
+            _currentState = State.Accelerate;
+        }
+        else
+        {
+            _currentState = State.Moving;
+        }
+
         Vector3 direction = (_currentNode.worldPosition - transform.position).normalized;
         Quaternion targetRotation = Quaternion.LookRotation(direction);
         transform.rotation = Quaternion.Slerp(transform.rotation, targetRotation, Time.deltaTime * turningSpeed);
